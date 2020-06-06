@@ -50,7 +50,7 @@ namespace Snoop
 
                 if (File.Exists(injectorLauncherExe) == false)
                 {
-                    var message = @$"Could not find the injector launcher ""{injectorLauncherExe}"".
+                    var message = $@"Could not find the injector launcher ""{injectorLauncherExe}"".
 Snoop requires this component, which is part of the Snoop project, to do it's job.
 - If you compiled snoop yourself, you should compile all required components.
 - If you downloaded snoop you should not omit any files contained in the archive you downloaded and make sure that no anti virus deleted the file.";

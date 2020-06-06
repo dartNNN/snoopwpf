@@ -10,6 +10,8 @@ All other rights reserved.
 	x:Class="Snoop.Controls.PropertyGrid2"
 	xmlns:snoop="clr-namespace:Snoop"
 	xmlns:controls="clr-namespace:Snoop.Controls"
+	xmlns:snoopwpf="urn:snoopwpf"
+	xmlns:infrastructure="clr-namespace:Snoop.Infrastructure"
 	x:Name="PropertyGrid"
 	MinHeight="0"
 	MinWidth="0"
@@ -73,7 +75,7 @@ All other rights reserved.
 				</ControlTemplate.Triggers>
 			</ControlTemplate>
 
-			<DataTemplate x:Key="ValueSourceTemplate" DataType="snoop:PropertyInformation">
+			<DataTemplate x:Key="ValueSourceTemplate" DataType="infrastructure:PropertyInformation">
 				<TextBlock Style="{x:Null}" Text="{Binding ValueSource.BaseValueSource}" Height="16">
 					<TextBlock.ToolTip>
 						<TextBlock Style="{x:Null}" Text="{Binding ValueSource.BaseValueSource}"/>
@@ -151,7 +153,7 @@ All other rights reserved.
 			<GridView>
 				<GridViewColumn Width="25">
 					<GridViewColumn.CellTemplate>
-						<DataTemplate DataType="snoop:PropertyInformation">
+						<DataTemplate DataType="infrastructure:PropertyInformation">
 							<CheckBox Style="{x:Null}" IsChecked="{Binding BreakOnChange}" Template="{StaticResource BreakpointTemplate}">
 								<CheckBox.ToolTip>
 									<TextBlock Style="{x:Null}" Text="Click here to toggle a debug breakpoint on and off."/>
@@ -170,7 +172,7 @@ All other rights reserved.
 						</TextBlock>
 					</GridViewColumn.Header>
 					<GridViewColumn.CellTemplate>
-						<DataTemplate DataType="snoop:PropertyInformation">
+						<DataTemplate DataType="infrastructure:PropertyInformation">
 							<TextBlock Style="{x:Null}" Text="{Binding DisplayName}" Height="15" MouseLeftButtonDown="HandleNameClick">
 								<TextBlock.ToolTip>
 									<TextBlock Style="{x:Null}" Text="{Binding DisplayName}"/>
@@ -221,7 +223,7 @@ All other rights reserved.
 						</TextBlock>
 					</GridViewColumn.Header>
 					<GridViewColumn.CellTemplate>
-						<DataTemplate DataType="snoop:PropertyInformation">
+						<DataTemplate DataType="infrastructure:PropertyInformation">
 							<TextBlock Style="{x:Null}" Text="{Binding BindingError}" Height="15">
 								<TextBlock.ToolTip>
 									<TextBlock Style="{x:Null}" Text="{Binding BindingError}"/>
