@@ -681,13 +681,17 @@ namespace Snoop.Infrastructure
             var dp = this.DependencyProperty;
             var d = this.Target as DependencyObject;
 
-            if (SnoopModes.MultipleDispatcherMode && d != null && d.Dispatcher != this.Dispatcher)
+            if (SnoopModes.MultipleDispatcherMode
+                && d != null
+                && d.Dispatcher != this.Dispatcher)
             {
                 return;
             }
 
-            if (dp != null && d != null)
+            if (dp != null
+                && d != null)
             {
+                //Debugger.Launch();
                 if (d.ReadLocalValue(dp) != DependencyProperty.UnsetValue)
                 {
                     this.isLocallySet = true;
@@ -698,7 +702,7 @@ namespace Snoop.Infrastructure
                 {
                     this.isDatabound = true;
 
-                    if (expression.HasError 
+                    if (expression.HasError
                         || (expression.Status != BindingStatus.Active && !(expression is PriorityBindingExpression)))
                     {
                         this.isInvalidBinding = true;
@@ -714,28 +718,15 @@ namespace Snoop.Infrastructure
                         BindingOperations.SetBinding(d, dp, expression.ParentBindingBase);
                         this.ignoreUpdate = false;
 
-                        // cplotts note: maciek ... are you saying that this is another, more concise way to dispatch the following code?
-                        //Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
-                        //    {
-                        //        bindingError = builder.ToString();
-                        //        this.OnPropertyChanged("BindingError");
-                        //        PresentationTraceSources.DataBindingSource.Listeners.Remove(tracer);
-                        //        writer.Close();
-                        //    });
-
                         // this needs to happen on idle so that we can actually run the binding, which may occur asynchronously.
-                        this.Dispatcher.BeginInvoke(
-                            DispatcherPriority.ApplicationIdle,
-                            new DispatcherOperationCallback(
-                                delegate
+                        this.RunInDispatcherAsync(
+                                () =>
                                 {
                                     this.bindingError = builder.ToString();
                                     this.OnPropertyChanged(nameof(this.BindingError));
                                     PresentationTraceSources.DataBindingSource.Listeners.Remove(tracer);
                                     writer.Close();
-                                    return null;
-                                }),
-                            null);
+                                }, DispatcherPriority.ApplicationIdle);
                     }
                     else
                     {
@@ -784,15 +775,15 @@ namespace Snoop.Infrastructure
                 }
             }
 
+            // sort the properties before adding potential collection items
+            properties.Sort();
+
             //delve path. also, issue 4919
             var extendedProps = GetExtendedProperties(obj);
             if (extendedProps != null)
             {
-                properties.AddRange(extendedProps);
+                properties.InsertRange(0, extendedProps);
             }
-
-            // sort the properties before adding potential collection items
-            properties.Sort();
 
             // if the object is a collection, add the items in the collection as properties
             if (obj is ICollection collection)
@@ -813,22 +804,31 @@ namespace Snoop.Infrastructure
         /// <summary>
         /// 4919 + Delve
         /// </summary>
-        /// <param name="obj"></param>
         /// <returns></returns>
         private static IList<PropertyInformation> GetExtendedProperties(object obj)
         {
-            if (obj is null
-                || ResourceKeyCache.Contains(obj) == false)
+            if (obj is null)
             {
                 return null;
             }
 
-            var key = ResourceKeyCache.GetKey(obj);
-            var prop = new PropertyInformation(key, new object(), "x:Key", key, true);
-            return new List<PropertyInformation>
+            if (ResourceKeyCache.Contains(obj))
             {
-                prop
-            };
+                var key = ResourceKeyCache.GetKey(obj);
+                var prop = new PropertyInformation(key, null, "x:Key", key, isCopyable: true);
+                return new List<PropertyInformation>
+                {
+                    prop
+                };
+            }
+
+            if (obj is string
+                || obj.GetType().IsValueType)
+            {
+                return new List<PropertyInformation> { new PropertyInformation(obj, null, "ToString", obj, isCopyable: true) };
+            }
+
+            return null;
         }
 
         private static List<PropertyDescriptor> GetAllProperties(object obj, Attribute[] attributes)

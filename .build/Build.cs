@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Nuke.Common;
 using Nuke.Common.Execution;
@@ -28,7 +29,18 @@ class Build : NukeBuild
     ///   - Microsoft VisualStudio     https://nuke.build/visualstudio
     ///   - Microsoft VSCode           https://nuke.build/vscode
 
-    public static int Main () => Execute<Build>(x => x.Compile);
+    static Build()
+    {
+        // generated with http://patorjk.com/software/taag/#p=display&f=ANSI%20Shadow&t=SnoopWPF
+        Logger.Normal("███████╗███╗   ██╗ ██████╗  ██████╗ ██████╗ ██╗    ██╗██████╗ ███████╗");
+        Logger.Normal("██╔════╝████╗  ██║██╔═══██╗██╔═══██╗██╔══██╗██║    ██║██╔══██╗██╔════╝");
+        Logger.Normal("███████╗██╔██╗ ██║██║   ██║██║   ██║██████╔╝██║ █╗ ██║██████╔╝█████╗  ");
+        Logger.Normal("╚════██║██║╚██╗██║██║   ██║██║   ██║██╔═══╝ ██║███╗██║██╔═══╝ ██╔══╝  ");
+        Logger.Normal("███████║██║ ╚████║╚██████╔╝╚██████╔╝██║     ╚███╔███╔╝██║     ██║     ");
+        Logger.Normal("╚══════╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝ ╚═╝      ╚══╝╚══╝ ╚═╝     ╚═╝     ");
+    }
+
+    public static int Main() => Execute<Build>(x => x.Compile);
 
     protected override void OnBuildInitialized()
     {
@@ -45,22 +57,25 @@ class Build : NukeBuild
         Console.WriteLine("NuGet           Version: {0}", GitVersion.NuGetVersion);
     }
 
+    string ProjectName = "Snoop";
+
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
     [Solution] readonly Solution Solution;
+
     [GitRepository] readonly GitRepository GitRepository;
-    [GitVersion] readonly GitVersion GitVersion;
+
+    [GitVersion(Framework = "netcoreapp3.1")] readonly GitVersion GitVersion;
     
-    private readonly List<string> checkSumFiles = new List<string>();
+    readonly List<string> CheckSumFiles = new List<string>();
 
     AbsolutePath BuildBinDirectory => RootDirectory / "bin";
 
     AbsolutePath CurrentBuildOutputDirectory => BuildBinDirectory / Configuration;
 
-    AbsolutePath IntermediateOutputDirectory => RootDirectory / "";
-
-    AbsolutePath OutputDirectory => RootDirectory / "output";
+    [Parameter]
+    readonly AbsolutePath ArtifactsDirectory = RootDirectory / "artifacts";
 
     AbsolutePath ChocolateyDirectory => RootDirectory / "chocolatey";
 
@@ -68,11 +83,11 @@ class Build : NukeBuild
 
     string LightExecutable => ToolPathResolver.GetPackageExecutable("wix", "light.exe");
 
-    string FenceOutput = "".PadLeft(30, '#');
+    readonly string FenceOutput = "".PadLeft(30, '#');
 
     Target CleanOutput => _ => _
         .Executes(() => {
-            EnsureCleanDirectory(OutputDirectory);
+            EnsureCleanDirectory(ArtifactsDirectory);
         });
 
     Target Restore => _ => _
@@ -102,39 +117,32 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .Executes(() => {
             // Generate ingore files to prevent chocolatey from generating shims for them
-            foreach (var launcher in CurrentBuildOutputDirectory.GlobFiles("Snoop.InjectorLauncher.*.exe"))
+            foreach (var launcher in CurrentBuildOutputDirectory.GlobFiles($"{ProjectName}.InjectorLauncher.*.exe"))
             {
-                using (System.IO.File.Create(launcher + ".ignore")) { };
+                using (File.Create(launcher + ".ignore")) { };
             }
 
             NuGetTasks.NuGetPack(s => s
-                .SetTargetPath(ChocolateyDirectory / "snoop.nuspec")
+                .SetTargetPath(ChocolateyDirectory / $"{ProjectName}.nuspec")
                 .SetVersion(GitVersion.NuGetVersion)
                 .SetConfiguration(Configuration)
-                .SetOutputDirectory(OutputDirectory)
+                .SetOutputDirectory(ArtifactsDirectory)
                 .SetNoPackageAnalysis(true));
+            
+            var tempDirectory = TemporaryDirectory / $"{ProjectName}{nameof(Pack)}";
 
-            var tempDirectory = TemporaryDirectory / "SnoopBuild";
+            EnsureCleanDirectory(tempDirectory);
 
-            if (DirectoryExists(tempDirectory))
-            {
-                DeleteDirectory(tempDirectory);
-            }
+            var nupkg = ArtifactsDirectory / $"{ProjectName}.{GitVersion.NuGetVersion}.nupkg";
 
-            var nupkgs = OutputDirectory.GlobFiles($"snoop.{GitVersion.NuGetVersion}.nupkg");
-            var nupkg = nupkgs.First();
-
-            {
-                var outputFile = nupkg;
-                checkSumFiles.Add(outputFile);
-            }
+            CheckSumFiles.Add(nupkg);
 
             {
                 CompressionTasks.UncompressZip(nupkg, tempDirectory);
 
-                var outputFile = OutputDirectory / $"snoop.{GitVersion.NuGetVersion}.zip";
+                var outputFile = ArtifactsDirectory / $"{ProjectName}.{GitVersion.NuGetVersion}.zip";
                 CompressionTasks.Compress(tempDirectory / "tools",  outputFile, info => info.Name.Contains("chocolatey") == false && info.Name != "VERIFICATION.txt");
-                checkSumFiles.Add(outputFile);
+                CheckSumFiles.Add(outputFile);
             }
         });
 
@@ -143,27 +151,32 @@ class Build : NukeBuild
         .DependsOn(Compile)
         .After(Pack)
         .Executes(() => {
+            var tempDirectory = TemporaryDirectory / $"{ProjectName}{nameof(Setup)}";
+
+            EnsureCleanDirectory(tempDirectory);
+
             var candleProcess = ProcessTasks.StartProcess(CandleExecutable, 
-                $"snoop.wxs -ext WixUIExtension -o \"{OutputDirectory / "Snoop.wixobj"}\" -dProductVersion=\"{GitVersion.MajorMinorPatch}\" -nologo");
+                $"{ProjectName}.wxs -ext WixUIExtension -o \"{tempDirectory / $"{ProjectName}.wixobj"}\" -dProductVersion=\"{GitVersion.MajorMinorPatch}\" -nologo");
             candleProcess.AssertZeroExitCode();
 
-            var outputFile = $"{OutputDirectory / $"Snoop.{GitVersion.NuGetVersion}.msi"}";
+            var outputFile = $"{ArtifactsDirectory / $"{ProjectName}.{GitVersion.NuGetVersion}.msi"}";
             var lightProcess = ProcessTasks.StartProcess(LightExecutable, 
-                $"-out \"{outputFile}\" -b \"{CurrentBuildOutputDirectory}\" \"{OutputDirectory / "Snoop.wixobj"}\" -ext WixUIExtension -dProductVersion=\"{GitVersion.MajorMinorPatch}\" -pdbout \"{OutputDirectory / "Snoop.wixpdb"}\" -nologo -sice:ICE61");
+                $"-out \"{outputFile}\" -b \"{CurrentBuildOutputDirectory}\" \"{tempDirectory / $"{ProjectName}.wixobj"}\" -ext WixUIExtension -dProductVersion=\"{GitVersion.MajorMinorPatch}\" -pdbout \"{tempDirectory / $"{ProjectName}.wixpdb"}\" -nologo -sice:ICE61");
             lightProcess.AssertZeroExitCode();
 
-            checkSumFiles.Add(outputFile);
+            CheckSumFiles.Add(outputFile);
         });
 
     Target CheckSums => _ => _
         .TriggeredBy(Pack, Setup)
         .Executes(() => {
-            foreach (var item in checkSumFiles)
+            foreach (var item in CheckSumFiles)
             {
                 var checkSum = FileHelper.SHA256CheckSum(item);
                 Logger.Info(FenceOutput);
                 Logger.Info($"CheckSum for \"{item}\".");
                 Logger.Info($"SHA256 \"{checkSum}\".");
+                File.WriteAllText(item + ".sha256", checkSum);
                 Logger.Info(FenceOutput);
             }
         });

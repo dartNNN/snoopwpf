@@ -202,19 +202,19 @@
         {
             domain.AssemblyResolve += (sender, args) =>
             {
-                if (!args.Name.Contains("Snoop"))
+                if (args.Name.StartsWith("Snoop.Core,"))
                 {
-                    return null;
+                    return Assembly.GetExecutingAssembly();
                 }
 
-                var assemblyName = new AssemblyName(args.Name);
+                #if NETCOREAPP3_1
+                if (args.Name.StartsWith("System.Management.Automation,"))
+                {
+                    return Assembly.LoadFrom(Snoop.PowerShell.ShellConstants.GetPowerShellAssemblyPath());
+                }
+                #endif
 
-                var codeBase = Assembly.GetExecutingAssembly().Location;
-                var dir = Path.GetDirectoryName(codeBase);
-
-                return (from file in Directory.EnumerateFiles(dir, "*.dll")
-                    where file.Contains(assemblyName.Name)
-                    select Assembly.LoadFrom(file)).FirstOrDefault();
+                return null;
             };
         }
 

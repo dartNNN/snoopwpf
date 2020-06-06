@@ -9,14 +9,26 @@ namespace Snoop.Windows
     using System.ComponentModel;
     using System.Globalization;
     using System.Windows;
+    using System.Windows.Controls;
     using System.Windows.Data;
     using System.Windows.Input;
     using System.Windows.Media;
     using Snoop.Controls;
     using Snoop.Infrastructure;
+    using Snoop.Properties;
 
     public sealed partial class Zoomer
     {
+        private readonly TranslateTransform translation = new TranslateTransform();
+        private readonly ScaleTransform zoom = new ScaleTransform();
+        private readonly TransformGroup transform = new TransformGroup();
+        private Point downPoint;
+        private object target;
+        private Visual targetVisual;
+        private VisualTree3DView visualTree3DView;
+
+        private const double ZoomFactor = 1.1;
+
         static Zoomer()
         {
             ResetCommand = new RoutedCommand("Reset", typeof(Zoomer));
@@ -70,11 +82,12 @@ namespace Snoop.Windows
 
         public override object Target
         {
-            get { return this.target; }
+            get => this.target;
 
             set
             {
                 this.target = value;
+                this.targetVisual = value as Visual;
                 var element = this.CreateIfPossible(value);
                 this.Viewbox.Child = element;
             }
@@ -95,7 +108,7 @@ namespace Snoop.Windows
             base.OnSourceInitialized(e);
 
             // load the window placement details from the user settings.
-            SnoopWindowUtils.LoadWindowPlacement(this, Properties.Settings.Default.ZoomerWindowPlacement);
+            SnoopWindowUtils.LoadWindowPlacement(this, Settings.Default.ZoomerWindowPlacement);
         }
 
         protected override void OnClosing(CancelEventArgs e)
@@ -105,7 +118,7 @@ namespace Snoop.Windows
             this.Viewbox.Child = null;
 
             // persist the window placement details to the user settings.
-            SnoopWindowUtils.SaveWindowPlacement(this, wp => Properties.Settings.Default.ZoomerWindowPlacement = wp);
+            SnoopWindowUtils.SaveWindowPlacement(this, wp => Settings.Default.ZoomerWindowPlacement = wp);
         }
 
         /// <inheritdoc />
@@ -139,7 +152,7 @@ namespace Snoop.Windows
             return root;
         }
 
-        private void HandleReset(object target, ExecutedRoutedEventArgs args)
+        private void HandleReset(object sender, ExecutedRoutedEventArgs args)
         {
             this.translation.X = 0;
             this.translation.Y = 0;
@@ -150,82 +163,91 @@ namespace Snoop.Windows
 
             if (this.visualTree3DView != null)
             {
-                this.visualTree3DView.Reset();
+                this.visualTree3DView = null;
                 this.ZScaleSlider.Value = 0;
+                this.dpiBox.SelectedIndex = 2;
+
+                this.CreateAndSetVisualTree3DView(this.targetVisual);
             }
         }
 
-        private void CanReset(object target, CanExecuteRoutedEventArgs args)
+        private void CanReset(object sender, CanExecuteRoutedEventArgs args)
         {
             args.CanExecute = true;
             args.Handled = true;
         }
 
-        private void HandleZoomIn(object target, ExecutedRoutedEventArgs args)
+        private void HandleZoomIn(object sender, ExecutedRoutedEventArgs args)
         {
             var offset = Mouse.GetPosition(this.Viewbox);
             this.Zoom(ZoomFactor, offset);
         }
 
-        private void HandleZoomOut(object target, ExecutedRoutedEventArgs args)
+        private void HandleZoomOut(object sender, ExecutedRoutedEventArgs args)
         {
             var offset = Mouse.GetPosition(this.Viewbox);
             this.Zoom(1 / ZoomFactor, offset);
         }
 
-        private void HandlePanLeft(object target, ExecutedRoutedEventArgs args)
+        private void HandlePanLeft(object sender, ExecutedRoutedEventArgs args)
         {
             this.translation.X -= 5;
         }
 
-        private void HandlePanRight(object target, ExecutedRoutedEventArgs args)
+        private void HandlePanRight(object sender, ExecutedRoutedEventArgs args)
         {
             this.translation.X += 5;
         }
 
-        private void HandlePanUp(object target, ExecutedRoutedEventArgs args)
+        private void HandlePanUp(object sender, ExecutedRoutedEventArgs args)
         {
             this.translation.Y -= 5;
         }
 
-        private void HandlePanDown(object target, ExecutedRoutedEventArgs args)
+        private void HandlePanDown(object sender, ExecutedRoutedEventArgs args)
         {
             this.translation.Y += 5;
         }
 
-        private void HandleSwitchTo2D(object target, ExecutedRoutedEventArgs args)
+        private void HandleSwitchTo2D(object sender, ExecutedRoutedEventArgs args)
         {
             if (this.visualTree3DView != null)
             {
                 this.Target = this.target;
                 this.visualTree3DView = null;
-                this.ZScaleSlider.Visibility = Visibility.Collapsed;
+                this.ThreeDViewControls.Visibility = Visibility.Collapsed;
             }
         }
 
-        private void HandleSwitchTo3D(object target, ExecutedRoutedEventArgs args)
+        private void HandleSwitchTo3D(object sender, ExecutedRoutedEventArgs args)
         {
-            if (this.visualTree3DView == null 
-                && this.target is Visual visual)
+            if (this.visualTree3DView == null
+                && this.targetVisual != null)
             {
-                try
-                {
-                    Mouse.OverrideCursor = Cursors.Wait;
-                    this.visualTree3DView = new VisualTree3DView(visual);
-                    this.Viewbox.Child = this.visualTree3DView;
-                }
-                finally
-                {
-                    Mouse.OverrideCursor = null;
-                }
+                this.CreateAndSetVisualTree3DView(this.targetVisual);
 
-                this.ZScaleSlider.Visibility = Visibility.Visible;
+                this.ThreeDViewControls.Visibility = Visibility.Visible;
             }
         }
 
-        private void CanSwitchTo3D(object target, CanExecuteRoutedEventArgs args)
+        private void CreateAndSetVisualTree3DView(Visual visual)
         {
-            args.CanExecute = this.target is Visual;
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                this.visualTree3DView = new VisualTree3DView(visual, int.Parse(((TextBlock)((ComboBoxItem)this.dpiBox.SelectedItem).Content).Text));
+                this.Viewbox.Child = this.visualTree3DView;
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private void CanSwitchTo3D(object sender, CanExecuteRoutedEventArgs args)
+        {
+            args.CanExecute = this.targetVisual != null;
             args.Handled = true;
         }
 
@@ -272,78 +294,41 @@ namespace Snoop.Windows
             return ZoomerUtilities.CreateIfPossible(item);
         }
 
-        //private UIElement CreateIfPossible(object item)
-        //{
-        //    if (item is Window && VisualTreeHelper.GetChildrenCount((Visual)item) == 1)
-        //        item = VisualTreeHelper.GetChild((Visual)item, 0);
-
-        //    if (item is FrameworkElement)
-        //    {
-        //        FrameworkElement uiElement = (FrameworkElement)item;
-        //        VisualBrush brush = new VisualBrush(uiElement);
-        //        brush.Stretch = Stretch.Uniform;
-        //        Rectangle rect = new Rectangle();
-        //        rect.Fill = brush;
-        //        rect.Width = uiElement.ActualWidth;
-        //        rect.Height = uiElement.ActualHeight;
-        //        return rect;
-        //    }
-
-        //    else if (item is ResourceDictionary)
-        //    {
-        //        StackPanel stackPanel = new StackPanel();
-
-        //        foreach (object value in ((ResourceDictionary)item).Values)
-        //        {
-        //            UIElement element = CreateIfPossible(value);
-        //            if (element != null)
-        //                stackPanel.Children.Add(element);
-        //        }
-        //        return stackPanel;
-        //    }
-        //    else if (item is Brush)
-        //    {
-        //        Rectangle rect = new Rectangle();
-        //        rect.Width = 10;
-        //        rect.Height = 10;
-        //        rect.Fill = (Brush)item;
-        //        return rect;
-        //    }
-        //    else if (item is ImageSource)
-        //    {
-        //        Image image = new Image();
-        //        image.Source = (ImageSource)item;
-        //        return image;
-        //    }
-        //    return null;
-        //}
-
-        private void Zoom(double zoom, Point offset)
+        private void Zoom(double newZoom, Point offset)
         {
-            var v = new Vector((1 - zoom) * offset.X, (1 - zoom) * offset.Y);
+            var v = new Vector((1 - newZoom) * offset.X, (1 - newZoom) * offset.Y);
 
             var translationVector = v * this.transform.Value;
             this.translation.X += translationVector.X;
             this.translation.Y += translationVector.Y;
 
-            this.zoom.ScaleX *= zoom;
-            this.zoom.ScaleY *= zoom;
+            this.zoom.ScaleX *= newZoom;
+            this.zoom.ScaleY *= newZoom;
         }
 
-        private readonly TranslateTransform translation = new TranslateTransform();
-        private readonly ScaleTransform zoom = new ScaleTransform();
-        private readonly TransformGroup transform = new TransformGroup();
-        private Point downPoint;
-        private object target;
-        private VisualTree3DView visualTree3DView;
+        private void DpiBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (this.visualTree3DView != null
+                && this.targetVisual != null)
+            {
+                this.translation.X = 0;
+                this.translation.Y = 0;
+                this.zoom.ScaleX = 1;
+                this.zoom.ScaleY = 1;
+                this.zoom.CenterX = 0;
+                this.zoom.CenterY = 0;
 
-        private const double ZoomFactor = 1.1;
-
-        private delegate void Action();
+                this.CreateAndSetVisualTree3DView(this.targetVisual);
+            }
+        }
     }
 
-    public class DoubleToWhitenessConverter : IValueConverter
+    [ValueConversion(typeof(double), typeof(SolidColorBrush))]
+    [ValueConversion(typeof(float), typeof(SolidColorBrush))]
+    public sealed class DoubleToWhitenessConverter : IValueConverter
     {
+        public static readonly DoubleToWhitenessConverter Default = new DoubleToWhitenessConverter();
+
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var val = (float)(double)value;

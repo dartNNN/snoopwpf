@@ -38,6 +38,14 @@
             </Component>
           </Directory>
 
+          <Directory Id="netcoreapp31" Name="netcoreapp3.1">
+            <Component Id="Snoop.Core.netcoreapp3.1.dll" Guid="{FF43CCAC-9D8B-42BE-A571-809F3E14082D}">
+                <File Id="Snoop.Core.netcoreapp3.1.dll" KeyPath="yes" Source="SourceDir\netcoreapp3.1\Snoop.Core.dll" />
+                <File Id="Snoop.Core.netcoreapp3.1.deps.json" Source="SourceDir\netcoreapp3.1\Snoop.Core.deps.json" />
+                <File Id="Snoop.Core.netcoreapp3.1.pdb" Source="SourceDir\netcoreapp3.1\Snoop.Core.pdb" />
+            </Component>
+          </Directory>
+
           <Component Id="Snoop.GenericInjector.x64.dll" Guid="{DF9AFA72-A1C6-48C5-9BF0-F00C284FA111}">
               <File Id="Snoop.GenericInjector.x64.dll" KeyPath="yes" Source="SourceDir\Snoop.GenericInjector.x64.dll" />
               <File Id="Snoop.GenericInjector.x64.pdb" Source="SourceDir\Snoop.GenericInjector.x64.pdb" />
@@ -80,14 +88,24 @@
                           IconIndex="0" 
                           Advertise="yes" /> 
               </File>
+              <File Id="Snoop.pdb" Source="SourceDir\Snoop.pdb" />
           </Component>
           <Component Id="Snoop.exe.config" Guid="{8BB4A7B2-F181-40E8-BCFF-FCC287DA8D06}">
               <File Id="Snoop.exe.config" KeyPath="yes" Source="SourceDir\Snoop.exe.config" />
           </Component>
-          <Component Id="Snoop.pdb" Guid="{A74F3E32-B62B-43CB-BC54-B429D9093BFF}">
-              <File Id="Snoop.pdb" KeyPath="yes" Source="SourceDir\Snoop.pdb" />
+
+          <Component Id="Snoop.com" Guid="{cb40d877-92dc-452a-96c6-65f9a0d64439}">
+              <File Id="Snoop.com" KeyPath="yes" Source="SourceDir\Snoop.com" />
+          </Component>
+
+          <Component Id="Snoop.com.config" Guid="{e123e7d3-8371-43b8-b509-651c9cf0f158}">
+              <File Id="Snoop.com.config" KeyPath="yes" Source="SourceDir\Snoop.com.config" />
           </Component>
  
+          <Component Id="CommandLine.dll" Guid="{a6e69fb8-8471-40a4-9a38-a4b31cac0e61}">
+            <File Id="CommandLine.dll" KeyPath="yes" Source="SourceDir\CommandLine.dll" />
+          </Component>
+
           <Directory Id="SnoopScriptsFolder" Name="Scripts"> 
             <Component Id="SnoopScriptsComponent" Guid="65AD97C3-5B32-4020-892C-1D0E38656D6D"> 
               <File Id="SnoopScriptsFile" Name="Snoop.psm1" Source="Scripts\Snoop.psm1" /> 
@@ -113,6 +131,7 @@
       <ComponentRef Id="System.Management.Automation.dll" />
 
       <ComponentRef Id="Snoop.Core.netcoreapp3.0.dll" />
+      <ComponentRef Id="Snoop.Core.netcoreapp3.1.dll" />
 
       <ComponentRef Id="Snoop.GenericInjector.x64.dll" />
       <ComponentRef Id="Snoop.GenericInjector.x86.dll" />
@@ -122,7 +141,9 @@
 
       <ComponentRef Id="Snoop.exe" />
       <ComponentRef Id="Snoop.exe.config" />
-      <ComponentRef Id="Snoop.pdb" />
+      <ComponentRef Id="Snoop.com" />
+      <ComponentRef Id="Snoop.com.config" />
+      <ComponentRef Id="CommandLine.dll" />
       <ComponentRef Id="Root.Snoop.Core.net40.dll" />
 
       <ComponentRef Id="SnoopScriptsComponent"/> 

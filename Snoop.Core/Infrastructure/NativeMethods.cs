@@ -144,8 +144,20 @@ namespace Snoop.Infrastructure
             All = 0x0000001F
         }
 
-        // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms684139%28v=vs.85%29.aspx
+        public static bool IsProcess64BitWithoutException(Process process)
+        {
+            try
+            {
+                return IsProcess64Bit(process);
+            }
+            catch (Exception e)
+            {
+                Trace.WriteLine(e);
+                return false;
+            }
+        }
 
+        // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms684139%28v=vs.85%29.aspx
         public static bool IsProcess64Bit(Process process)
         {
             if (Environment.Is64BitOperatingSystem == false)
@@ -231,7 +243,7 @@ namespace Snoop.Infrastructure
                     do
                     {
                         yield return me32;
-                    } 
+                    }
                     while (Module32Next(hModuleSnap, ref me32));
                 }
             }
@@ -328,13 +340,13 @@ namespace Snoop.Infrastructure
                 if (mod.ModuleName.Equals(moduleName, StringComparison.OrdinalIgnoreCase)
                     || mod.FileName.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
                 {
-                    Trace.WriteLine($"Checking module {moduleName} with base address {mod.BaseAddress} for procaddress of {procName}...");
+                    Trace.WriteLine($"Checking module \"{moduleName}\" with base address \"{mod.BaseAddress}\" for procaddress of \"{procName}\"...");
 
                     var procAddress = GetProcAddress(mod.BaseAddress, procName).ToUInt64();
 
                     if (procAddress != 0)
                     {
-                        Trace.WriteLine($"Got proc address in foreign process with {procAddress}.");
+                        Trace.WriteLine($"Got proc address in foreign process with \"{procAddress}\".");
                         functionOffsetFromBaseAddress = procAddress - (ulong)mod.BaseAddress;
                     }
 
@@ -493,6 +505,15 @@ namespace Snoop.Infrastructure
         public static extern IntPtr SetWindowsHookEx(HookType hookType, UIntPtr lpfn, IntPtr hMod, uint dwThreadId);
 
         [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SetWindowsHookEx(HookType hookType, HookProc hookProc, IntPtr hMod, uint dwThreadId);
+
+        public delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]

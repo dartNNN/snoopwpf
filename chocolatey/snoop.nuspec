@@ -30,6 +30,10 @@
     <file src="..\bin\$Configuration$\Snoop.exe" target="tools\" />
     <file src="..\bin\$Configuration$\Snoop.exe.config" target="tools\" />
     <file src="..\bin\$Configuration$\Snoop.pdb" target="tools\" />
+    <file src="..\bin\$Configuration$\Snoop.com" target="tools\" />
+    <file src="..\bin\$Configuration$\Snoop.com.config" target="tools\" />
+
+    <file src="..\bin\$Configuration$\CommandLine.dll" target="tools\" />
     
     <file src="..\bin\$Configuration$\net40\Snoop.Core*.config" target="tools\net40\" />
     <file src="..\bin\$Configuration$\net40\Snoop.Core*.dll" target="tools\net40\" />
@@ -40,6 +44,11 @@
     <file src="..\bin\$Configuration$\netcoreapp3.0\Snoop.Core*.dll" target="tools\netcoreapp3.0\" />
     <file src="..\bin\$Configuration$\netcoreapp3.0\Snoop.Core*.pdb" target="tools\netcoreapp3.0\" />
     <file src="..\bin\$Configuration$\netcoreapp3.0\Snoop.Core*.json" target="tools\netcoreapp3.0\" />
+
+    <file src="..\bin\$Configuration$\netcoreapp3.1\Snoop.Core*.config" target="tools\netcoreapp3.1\" />
+    <file src="..\bin\$Configuration$\netcoreapp3.1\Snoop.Core*.dll" target="tools\netcoreapp3.1\" />
+    <file src="..\bin\$Configuration$\netcoreapp3.1\Snoop.Core*.pdb" target="tools\netcoreapp3.1\" />
+    <file src="..\bin\$Configuration$\netcoreapp3.1\Snoop.Core*.json" target="tools\netcoreapp3.1\" />
 
     <file src="..\bin\$Configuration$\Snoop.GenericInjector.*.dll" target="tools\" />
     <file src="..\bin\$Configuration$\Snoop.GenericInjector.*.pdb" target="tools\" />

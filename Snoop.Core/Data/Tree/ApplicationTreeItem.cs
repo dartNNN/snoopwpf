@@ -5,8 +5,6 @@
 
 namespace Snoop.Data.Tree
 {
-    using System.Collections.Generic;
-    using System.Linq;
     using System.Windows;
     using System.Windows.Media;
     using Snoop.Infrastructure;
@@ -15,8 +13,8 @@ namespace Snoop.Data.Tree
     {
         private readonly Application application;
 
-        public ApplicationTreeItem(Application application, TreeItem parent)
-            : base(application, parent)
+        public ApplicationTreeItem(Application application, TreeItem parent, TreeService treeService)
+            : base(application, parent, treeService)
         {
             this.application = application;
             this.IsExpanded = true;
@@ -26,10 +24,10 @@ namespace Snoop.Data.Tree
 
         protected override ResourceDictionary ResourceDictionary => this.application.Resources;
 
-        protected override void Reload(List<TreeItem> toBeRemoved)
+        protected override void ReloadCore()
         {
-            // having the call to base.Reload here ... puts the application resources at the very top of the tree view
-            base.Reload(toBeRemoved);
+            // having the call to base.ReloadCore here ... puts the application resources at the very top of the tree view
+            base.ReloadCore();
 
             foreach (Window window in this.application.Windows)
             {
@@ -46,16 +44,7 @@ namespace Snoop.Data.Tree
                     continue;
                 }
 
-                // don't recreate existing items but reload them instead
-                var existingItem = toBeRemoved.FirstOrDefault(x => ReferenceEquals(x.Target, window));
-                if (existingItem != null)
-                {
-                    toBeRemoved.Remove(existingItem);
-                    existingItem.Reload();
-                    continue;
-                }
-
-                this.Children.Add(Construct(window, this));
+                this.Children.Add(this.TreeService.Construct(window, this));
             }
         }
     }

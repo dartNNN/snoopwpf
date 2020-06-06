@@ -15,8 +15,7 @@ namespace Snoop.InjectorLauncher
 
             this.Bitness = GetBitnessAsString(this.Process);
 
-            this.SupportedFrameworkName = GetTargetFramework(process);
-            this.RequiresIJWHost = this.SupportedFrameworkName == "netcoreapp3.0";
+            this.SupportedFrameworkName = GetSupportedTargetFramework(process);
         }
 
         public static string GetBitnessAsString(Process process)
@@ -37,8 +36,6 @@ namespace Snoop.InjectorLauncher
         public string Bitness { get; }
 
         public string SupportedFrameworkName { get; }
-
-        public bool RequiresIJWHost { get; }
 
         public static ProcessWrapper From(int processId, IntPtr windowHandle)
         {
@@ -74,15 +71,55 @@ namespace Snoop.InjectorLauncher
             return null;
         }
 
-        private static string GetTargetFramework(Process process)
+        private static string GetSupportedTargetFramework(Process process)
         {
             var modules = NativeMethods.GetModules(process);
 
+            var wpfgfx_cor3Found = false;
+            FileVersionInfo hostPolicyVersionInfo = null;
+
             foreach (var module in modules)
             {
-                if (module.szModule.IndexOf("wpfgfx_cor3", StringComparison.OrdinalIgnoreCase) >= 0)
+#if DEBUG
+                Trace.WriteLine(module.szExePath);
+                var fileVersionInfo = FileVersionInfo.GetVersionInfo(module.szExePath);
+                Trace.WriteLine($"File: {fileVersionInfo.FileMajorPart}.{fileVersionInfo.FileMinorPart}");
+                Trace.WriteLine($"Prod: {fileVersionInfo.ProductMajorPart}.{fileVersionInfo.ProductMinorPart}");
+#endif
+
+                if (module.szModule.StartsWith("hostpolicy.dll", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "netcoreapp3.0";
+                    hostPolicyVersionInfo = FileVersionInfo.GetVersionInfo(module.szExePath);
+                }
+
+                if (module.szModule.StartsWith("wpfgfx_cor3.dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    wpfgfx_cor3Found = true;
+                }
+
+                if (wpfgfx_cor3Found
+                    && hostPolicyVersionInfo != null)
+                {
+                    break;
+                }
+            }
+
+            if (wpfgfx_cor3Found)
+            {
+                switch (hostPolicyVersionInfo?.ProductMajorPart)
+                {
+                    case 5:
+                        // we currently map from net 5 to netcoreapp 3.1
+                        return "netcoreapp3.1"; //return "net5.0";
+
+                    case 3 when hostPolicyVersionInfo.ProductMinorPart >= 1:
+                        return "netcoreapp3.1";
+
+                    case 3:
+                        return "netcoreapp3.0";
+
+                    default:
+                        return "netcoreapp3.0";
                 }
             }
 
