@@ -9,6 +9,7 @@ namespace Snoop.Controls
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
     using System.ComponentModel;
+    using System.Linq;
     using System.Windows;
     using System.Windows.Controls;
     using System.Windows.Input;
@@ -176,6 +177,8 @@ namespace Snoop.Controls
 
                 this.allProperties.Add(property);
 
+                this.GetCategory(property);
+
                 // checking whether a property is visible ... actually runs the property filtering code
                 if (property.IsVisible)
                 {
@@ -190,6 +193,48 @@ namespace Snoop.Controls
             else
             {
                 this.propertiesToAdd = null;
+
+                this.Categories = this.categories.Select(
+                        x => new PropertyFilterSet
+                        {
+                            DisplayName = x.Key,
+                            Properties = x.Value.ToArray()
+                        })
+	                .OrderBy(x => x.DisplayName)
+                    .ToArray();
+            }
+        }
+
+        private void GetCategory(PropertyInformation property)
+        {
+            foreach (var category in property.Categories)
+            {
+                if (string.IsNullOrEmpty(category))
+                {
+                    continue;
+                }
+
+                if (!this.categories.ContainsKey(category))
+                {
+                    this.categories[category] = new List<string>
+                    {
+                        property.DisplayName
+                    };
+                }
+                else
+                {
+                    this.categories[category].Add(property.DisplayName);
+                }
+            }
+        }
+
+        public PropertyFilterSet[] Categories
+        {
+            get => this.categoriesSet;
+            set
+            {
+                this.categoriesSet = value;
+                this.OnPropertyChanged(nameof(this.Categories));
             }
         }
 
@@ -420,6 +465,7 @@ namespace Snoop.Controls
         {
             this.allProperties.Clear();
             this.Properties.Clear();
+            this.categories.Clear();
             this.visiblePropertyCount = 0;
 
             this.propertiesToAdd = null;
@@ -436,6 +482,9 @@ namespace Snoop.Controls
         private ListSortDirection direction = ListSortDirection.Ascending;
 
         private readonly DispatcherTimer filterTimer;
+
+        private readonly Dictionary<string, List<string>> categories = new Dictionary<string, List<string>>();
+        private PropertyFilterSet[] categoriesSet;
 
         private static int CompareNames(PropertyInformation one, PropertyInformation two)
         {

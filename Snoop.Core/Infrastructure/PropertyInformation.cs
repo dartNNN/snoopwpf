@@ -74,6 +74,8 @@ namespace Snoop.Infrastructure
                     // warning: i saw a problem get swallowed by this empty catch (Exception) block.
                     // in other words, this empty catch block could be hiding some potential future errors.
                 }
+
+                this.categories = new[] { property.Category, property.ComponentType.Name };
             }
 
             this.Update();
@@ -464,6 +466,13 @@ namespace Snoop.Infrastructure
         }
 
         private string bindingError = string.Empty;
+
+        public string[] Categories
+        {
+            get { return this.categories; }
+        }
+
+        private readonly string[] categories;
 
         public PropertyDescriptor Property
         {

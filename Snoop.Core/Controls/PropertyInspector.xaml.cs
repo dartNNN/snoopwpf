@@ -58,6 +58,17 @@ namespace Snoop.Controls
             this.checkBoxClearAfterDelve.Unchecked += (s, e) => Properties.Settings.Default.ClearAfterDelve = this.checkBoxClearAfterDelve.IsChecked.HasValue && this.checkBoxClearAfterDelve.IsChecked.Value;
 
             this.checkBoxClearAfterDelve.IsChecked = Properties.Settings.Default.ClearAfterDelve;
+
+            this.PropertyGrid.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName != nameof(this.PropertyGrid.Categories))
+                {
+                    return;
+                }
+
+                this.allFilterSets = null;
+                this.OnPropertyChanged(nameof(this.AllFilterSets));
+            };
         }
 
         public bool NameValueOnly
@@ -539,9 +550,9 @@ namespace Snoop.Controls
                         Properties.Settings.Default.UserDefinedPropertyFilterSets = this.userFilterSets;
                         Properties.Settings.Default.Save();
 
-                        #pragma warning disable INPC015
+#pragma warning disable INPC015
                         this.SelectedFilterSet = null;
-                        #pragma warning restore INPC015
+#pragma warning restore INPC015
                         this.allFilterSets = null;
 
                         // trigger the UI to re-bind to the collection, so user sees changes they just made
@@ -629,6 +640,8 @@ namespace Snoop.Controls
                         IsDefault = false,
                         IsEditCommand = true,
                     });
+
+                ret.AddRange(this.PropertyGrid.Categories);
 
                 this.allFilterSets = ret.ToArray();
 
