@@ -55,10 +55,14 @@ namespace Snoop.Infrastructure
                         binding.Converter = NullStyleConverter.DefaultInstance;
                         binding.ConverterParameter = target;
                     }
+
+                    this.categories = new[] { dp.OwnerType.Name };
                 }
                 else
                 {
                     binding = new Binding(propertyName);
+                    
+                    this.categories = new[] { property.ComponentType.Name };
                 }
 
                 binding.Source = target;
@@ -74,8 +78,6 @@ namespace Snoop.Infrastructure
                     // warning: i saw a problem get swallowed by this empty catch (Exception) block.
                     // in other words, this empty catch block could be hiding some potential future errors.
                 }
-
-                this.categories = new[] { property.Category, property.ComponentType.Name };
             }
 
             this.Update();

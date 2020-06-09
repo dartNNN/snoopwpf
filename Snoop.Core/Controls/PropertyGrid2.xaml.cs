@@ -207,6 +207,11 @@ namespace Snoop.Controls
 
         private void GetCategory(PropertyInformation property)
         {
+            if (property.Categories == null)
+            {
+                return;
+            }
+            
             foreach (var category in property.Categories)
             {
                 if (string.IsNullOrEmpty(category))
